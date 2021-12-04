@@ -49,7 +49,17 @@ fn impl_derive_builder(derive_input: &DeriveInput) -> TokenStream {
         )
     });
 
+    let init_struct_from_builder = fields.iter().map(|f| {
+        let name = f.ident.as_ref().unwrap();
+
+        quote!(
+            #name: self.#name.as_ref().ok_or("missing field".to_string())?.clone(),
+        )
+    });
+
     let gen = quote! {
+
+        use std::error::Error;
 
         pub struct #builder_name {
             #(#fields_builder)*
@@ -57,6 +67,15 @@ fn impl_derive_builder(derive_input: &DeriveInput) -> TokenStream {
 
         impl #builder_name {
             #(#method)*
+        }
+
+        impl #builder_name {
+            pub fn build(&mut self) -> Result<#struct_name, Box<dyn Error>> {
+
+                Ok(#struct_name {
+                    #(#init_struct_from_builder)*
+                })
+            }
         }
 
         impl #struct_name {
